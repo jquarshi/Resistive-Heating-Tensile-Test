@@ -1,13 +1,10 @@
-# ==============================================================================
 # 2D Coupled Thermo-Mechanical Joule Heating + Tensile Necking Simulation
-#
 # Geometry & Loading:
-#   - Wire Length (L0): 0.1 m (10 cm)
-#   - Strain Rate: 5e-3 s^-1
-#   - Pull Velocity v = 5e-4 m/s (applied at y = 0.1 m)
-#   - Target Engineering Strain: 15% (Delta L = 15 mm)
-#   - Total Simulation Time: t_end = 30.0 s
-# ==============================================================================
+#   Wire Length (L0): 0.1 m (10 cm)
+#   Strain Rate: 5e-3 s^-1
+#   Pull Velocity v = 5e-4 m/s (applied at y = 0.1 m)
+#   Target Engineering Strain: 15% (Delta L = 0.0015 m or 1.5 cm)
+#   Total Simulated Time: t_end = 30.0 s
 
 [Mesh]
   [gmg]
@@ -27,19 +24,16 @@
 []
 
 [Variables]
-  # Temperature variable
   [T]
     initial_condition = 293.15 # Room temperature (K)
   [../]
 
-  # Mechanical displacement variables
   [disp_x]
   [../]
   [disp_y]
   [../]
 []
 
-# Automatically creates Kernels for 2D Solid Mechanics (Stress Equilibrium)
 [Physics/SolidMechanics/QuasiStatic]
   [all]
     strain = FINITE # Finite strain formulation to capture large geometric necking
@@ -73,14 +67,13 @@
 []
 
 [Functions]
-  # Displacement pull function enforcing strain rate dot_eps = 5e-3 s^-1
-  # v = dot_eps * L0 = 5e-3 * 0.1 = 5e-4 m/s
+  # v = strain * L0 = 5e-3 * 0.1 = 5e-4 m/s
   [pull_func]
     type = ParsedFunction
     expression = '0.0005 * t'
   [../]
 
-  # Temperature-Dependent Yield Stress Table (Thermal Softening)
+  # Temperature-Dependent Yield Stress Table
   [yield_stress_func]
     type = PiecewiseLinear
     x = '293.15 400.0  600.0  800.0  1000.0' # Temp (K)
@@ -89,7 +82,6 @@
 []
 
 [BCs]
-  # --- Thermal Boundary Conditions ---
   # Clamped electrical contacts act as isothermal heat sinks at 293.15 K
   [clamped_bottom_thermal]
     type = ADDirichletBC
@@ -106,7 +98,6 @@
   [../]
 
   # --- Mechanical Boundary Conditions ---
-  # Fix bottom boundary vertically
   [fix_y_bottom]
     type = DirichletBC
     variable = disp_y
@@ -114,7 +105,6 @@
     value = 0.0
   [../]
 
-  # Pin bottom-left corner to prevent rigid horizontal sliding
   [fix_x_bottom]
     type = DirichletBC
     variable = disp_x
@@ -122,7 +112,6 @@
     value = 0.0
   [../]
 
-  # Apply upward displacement to pull wire in tension at 5e-4 m/s
   [pull_top]
     type = FunctionDirichletBC
     variable = disp_y
@@ -132,7 +121,7 @@
 []
 
 [Materials]
-  # --- Thermal Material Properties ---
+  # Material thermal properties
   [k]
     type = ADGenericConstantMaterial
     prop_names = 'thermal_conductivity_copper'
@@ -161,15 +150,13 @@
     expression = '(J_val^2) / (sigma_0 / (1 + alpha * (T - T_ref)))'
   [../]
 
-  # --- Mechanical Material Properties ---
-  # Elasticity parameters for Copper
+  # Copper mechanical properties
   [elasticity]
     type = ComputeIsotropicElasticityTensor
     youngs_modulus = 110e9 # 110 GPa
     poissons_ratio = 0.34
   [../]
 
-  # Thermal Expansion Tensor
   [thermal_expansion]
     type = ComputeThermalExpansionEigenstrain
     temperature = T
@@ -178,14 +165,12 @@
     eigenstrain_name = thermal_eigenstrain
   [../]
 
-  # Plasticity Model using function-based yield stress
   [plasticity]
     type = IsotropicPlasticityStressUpdate
     yield_stress_function = yield_stress_func
     hardening_constant = 500e6 # 500 MPa Isotropic Hardening Modulus
   [../]
 
-  # Total Stress Calculation
   [stress]
     type = ComputeMultipleInelasticStress
     inelastic_models = 'plasticity'
@@ -199,7 +184,6 @@
   solve_type = PJFNK
   line_search = BT
 
-  # Robust solver settings for coupled thermo-mechanics
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_type -ksp_type'
   petsc_options_value = 'lu mumps gmres'
 
