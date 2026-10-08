@@ -1,0 +1,6 @@
+Applications:
+    resistive_heating:
+        app_types:
+            - resistive_heatingApp
+        content_directory: ${ROOT_DIR}/doc/content
+        log_default: WARNING
